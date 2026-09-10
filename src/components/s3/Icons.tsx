@@ -161,3 +161,16 @@ export const BackIcon = (p: IconProps) => (
     <path d="M15 18l-6-6 6-6" />
   </Svg>
 )
+
+export const SunIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="4.5" />
+    <path d="M12 2.5v2M12 19.5v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2.5 12h2M19.5 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+  </Svg>
+)
+
+export const MoonIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M20 13.5A8 8 0 0 1 10.5 4 8 8 0 1 0 20 13.5z" />
+  </Svg>
+)

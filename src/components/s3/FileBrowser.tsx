@@ -27,6 +27,7 @@ import { PromptModal } from './PromptModal'
 import { ConfirmModal } from './ConfirmModal'
 import { CopyMoveModal } from './CopyMoveModal'
 import { CloudIcon, LogoutIcon, ServerIcon } from './Icons'
+import ThemeToggle from '../ThemeToggle'
 
 type Toast = { id: number; message: string; kind: 'success' | 'error' | 'info' }
 
@@ -398,6 +399,7 @@ export default function FileBrowser({ user }: Props) {
           </button>
         </div>
         <div class="topbar-right">
+          <ThemeToggle />
           <span class="user-chip" title={user?.email ?? ''}>
             {user?.email ?? ''}
           </span>

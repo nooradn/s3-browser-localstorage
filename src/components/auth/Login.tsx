@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { CloudIcon, SpinnerIcon } from '../s3/Icons'
+import ThemeToggle from '../ThemeToggle'
 
 type Props = { redirectTo?: string }
 
@@ -42,6 +43,7 @@ export default function Login({ redirectTo }: Props) {
 
   return (
     <div class="login-wrap">
+      <ThemeToggle className="login-theme-toggle" />
       <form class="login-card" onSubmit={submit}>
         <div class="login-logo">
           <span class="login-logo-icon">
