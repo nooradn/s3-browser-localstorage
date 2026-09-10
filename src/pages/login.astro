@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro'
+import Login from '../components/auth/Login'
+
+const redirectTo = Astro.url.searchParams.get('next')
+---
+
+<Layout title="Masuk · S3 Browser">
+  <Login client:load redirectTo={redirectTo ?? undefined} />
+</Layout>
