@@ -1,6 +1,5 @@
 import { useState } from 'preact/hooks'
 import type { S3Profile } from '../../lib/client/profiles'
-import { newProfileId } from '../../lib/client/profiles'
 import { Modal } from './Modal'
 import { PencilIcon, PlusIcon, ServerIcon, TrashIcon } from './Icons'
 
@@ -77,7 +76,7 @@ export function ProfileModal({ profiles, activeId, onSave, onDelete, onClose }: 
     if (!secretAccessKey) return setError('Secret Key wajib diisi')
 
     onSave({
-      id: draft.id || newProfileId(),
+      id: draft.id,
       name,
       endpoint,
       region: (draft.region.trim() || 'auto').replace(/^https?:\/\//i, ''),
@@ -176,16 +175,14 @@ export function ProfileModal({ profiles, activeId, onSave, onDelete, onClose }: 
             <input class="input" placeholder="mis. s3.amazonaws.com / minio.example.com:9000" value={draft.endpoint} onInput={(e) => set('endpoint', e.currentTarget.value)} />
             <span class="hint">Tanpa awalan https:// boleh, nanti otomatis ditambahkan.</span>
           </div>
-          <div class="field-row">
-            <div class="field">
-              <span class="label">Region</span>
-              <input class="input" placeholder="auto" value={draft.region} onInput={(e) => set('region', e.currentTarget.value)} />
-            </div>
-            <label class="checkbox-row">
-              <input type="checkbox" checked={draft.forcePathStyle} onChange={(e) => set('forcePathStyle', e.currentTarget.checked)} />
-              <span>Path-style URL (umum untuk MinIO / endpoint custom)</span>
-            </label>
+          <div class="field">
+            <span class="label">Region</span>
+            <input class="input" placeholder="auto" value={draft.region} onInput={(e) => set('region', e.currentTarget.value)} />
           </div>
+          <label class="checkbox-row">
+            <input type="checkbox" checked={draft.forcePathStyle} onChange={(e) => set('forcePathStyle', e.currentTarget.checked)} />
+            <span>Path-style URL (umum untuk MinIO / endpoint custom)</span>
+          </label>
           <div class="field">
             <span class="label">Access Key ID</span>
             <input class="input" placeholder="AKIA..." value={draft.accessKeyId} onInput={(e) => set('accessKeyId', e.currentTarget.value)} spellcheck={false} />
@@ -193,7 +190,7 @@ export function ProfileModal({ profiles, activeId, onSave, onDelete, onClose }: 
           <div class="field">
             <span class="label">Secret Access Key</span>
             <input class="input" type="password" placeholder="••••••••" value={draft.secretAccessKey} onInput={(e) => set('secretAccessKey', e.currentTarget.value)} />
-            <span class="hint">Kredensial hanya tersimpan di localStorage browser dan dikirim server hanya saat request.</span>
+            <span class="hint">Kredensial tersimpan aman di Supabase (RLS per user) dan hanya dikirim ke server saat request S3.</span>
           </div>
           {error ? <p class="field-error">{error}</p> : null}
         </div>

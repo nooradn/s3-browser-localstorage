@@ -26,6 +26,21 @@ export function getSupabase(): SupabaseClient {
   })
 }
 
+export function supabaseWithSession(cookies: AstroCookies): SupabaseClient {
+  const { url, key } = supabaseEnv()
+  const access = cookies.get(ACCESS_COOKIE)?.value
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    global: {
+      headers: access ? { Authorization: `Bearer ${access}` } : undefined,
+    },
+  })
+}
+
 const cookieOptions = {
   httpOnly: true,
   secure: import.meta.env.PROD,

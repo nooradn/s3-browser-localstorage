@@ -13,10 +13,12 @@ import {
   uploadFile,
 } from '../../lib/client/api'
 import {
-  getActiveProfileId,
-  loadProfiles,
-  saveProfiles,
-  setActiveProfileId,
+  activateProfile as activateProfileApi,
+  createProfile as createProfileApi,
+  fetchProfiles as fetchProfilesApi,
+  removeProfile as removeProfileApi,
+  updateProfile as updateProfileApi,
+  type ProfileInput,
   type S3Profile,
 } from '../../lib/client/profiles'
 import { errMessage, joinKey, parentKey } from '../../lib/client/format'
@@ -57,8 +59,9 @@ type Props = {
 }
 
 export default function FileBrowser({ user }: Props) {
-  const [profiles, setProfiles] = useState<S3Profile[]>(() => loadProfiles())
-  const [activeId, setActiveId] = useState<string | null>(() => getActiveProfileId())
+  const [profiles, setProfiles] = useState<S3Profile[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [loadingProfiles, setLoadingProfiles] = useState(true)
   const active = useMemo(() => profiles.find((p) => p.id === activeId) ?? null, [profiles, activeId])
 
   const [buckets, setBuckets] = useState<string[]>([])
@@ -103,18 +106,23 @@ export default function FileBrowser({ user }: Props) {
   const bump = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   useEffect(() => {
-    const list = loadProfiles()
-    const stored = getActiveProfileId()
-    if (!stored || !list.some((p) => p.id === stored)) {
-      if (list.length) {
-        setActiveProfileId(list[0].id)
-        setActiveId(list[0].id)
-      } else {
-        setActiveProfileId(null)
-        setActiveId(null)
-      }
+    let cancelled = false
+    fetchProfilesApi()
+      .then(({ profiles: list, activeId: id }) => {
+        if (cancelled) return
+        setProfiles(list)
+        const next = id ?? list[0]?.id ?? null
+        if (next !== id) void activateProfileApi(next).catch(handleErr)
+        setActiveId(next)
+      })
+      .catch((e: unknown) => handleErr(e))
+      .finally(() => {
+        if (!cancelled) setLoadingProfiles(false)
+      })
+    return () => {
+      cancelled = true
     }
-  }, [])
+  }, [handleErr])
 
   useEffect(() => {
     setBuckets([])
@@ -166,37 +174,54 @@ export default function FileBrowser({ user }: Props) {
     }
   }, [active, bucket, prefix, refreshKey, handleErr])
 
-  function selectProfile(id: string) {
+  async function selectProfile(id: string) {
     if (!id) return
-    setActiveProfileId(id)
-    setActiveId(id)
-  }
-
-  function saveProfile(p: S3Profile) {
-    setProfiles((prev) => {
-      const exists = prev.some((x) => x.id === p.id)
-      const next = exists ? prev.map((x) => (x.id === p.id ? p : x)) : [...prev, p]
-      saveProfiles(next)
-      return next
-    })
-    setActiveProfileId(p.id)
-    setActiveId(p.id)
-    pushToast('Profil disimpan', 'success')
-  }
-
-  function removeProfile(id: string) {
-    setProfiles((prev) => {
-      const next = prev.filter((x) => x.id !== id)
-      saveProfiles(next)
-      return next
-    })
-    if (activeId === id) {
-      const rest = profiles.filter((x) => x.id !== id)
-      const first = rest[0] ?? null
-      setActiveProfileId(first?.id ?? null)
-      setActiveId(first?.id ?? null)
+    try {
+      await activateProfileApi(id)
+      setActiveId(id)
+    } catch (e) {
+      handleErr(e)
     }
-    pushToast('Profil dihapus', 'info')
+  }
+
+  async function saveProfile(p: S3Profile) {
+    const exists = profiles.some((x) => x.id === p.id)
+    const input: ProfileInput = {
+      name: p.name,
+      endpoint: p.endpoint,
+      region: p.region,
+      accessKeyId: p.accessKeyId,
+      secretAccessKey: p.secretAccessKey,
+      forcePathStyle: p.forcePathStyle,
+    }
+    try {
+      const saved = exists ? await updateProfileApi(p.id, input) : await createProfileApi(input)
+      setProfiles((prev) => {
+        const has = prev.some((x) => x.id === saved.id)
+        return has ? prev.map((x) => (x.id === saved.id ? saved : x)) : [...prev, saved]
+      })
+      await activateProfileApi(saved.id)
+      setActiveId(saved.id)
+      pushToast('Profil disimpan', 'success')
+    } catch (e) {
+      handleErr(e)
+    }
+  }
+
+  async function removeProfile(id: string) {
+    try {
+      await removeProfileApi(id)
+      setProfiles((prev) => prev.filter((x) => x.id !== id))
+      if (activeId === id) {
+        const rest = profiles.filter((x) => x.id !== id)
+        const first = rest[0] ?? null
+        await activateProfileApi(first?.id ?? null)
+        setActiveId(first?.id ?? null)
+      }
+      pushToast('Profil dihapus', 'info')
+    } catch (e) {
+      handleErr(e)
+    }
   }
 
   async function onUpload(files: FileList | null) {
@@ -387,7 +412,7 @@ export default function FileBrowser({ user }: Props) {
             value={active?.id ?? ''}
             onChange={(e) => selectProfile(e.currentTarget.value)}
           >
-            {!profiles.length ? <option value="">— tambah profil S3 —</option> : null}
+            {!profiles.length ? <option value="">{loadingProfiles ? 'Memuat profil...' : '— tambah profil S3 —'}</option> : null}
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

@@ -8,12 +8,13 @@ Web app untuk mengelola storage S3-compatible (AWS S3, MinIO, Cloudflare R2, Bac
 - Multi-profil koneksi S3 — simpan beberapa endpoint & kredensial, ganti cepat
 - List bucket & jelajahi folder/objek (pagination berbasis `Delimiter: '/'`)
 - Upload file, download/preview, rename, copy, move, hapus (file & folder rekursif), buat folder
-- UI gelap, responsif, bahasa Indonesia
+- UI gelap/terang, responsif, bahasa Indonesia
 
 ## Cara kerja
 
 - **Auth**: login diproses server-side (`POST /api/auth/login`) memakai `@supabase/supabase-js`. Sesi disimpan di `httpOnly` cookie (`sb_access_token`, `sb_refresh_token`). Middleware melindungi `/app` dan seluruh `/api/s3/*`.
-- **Kredensial S3**: TIDAK pernah disimpan di server. Dikirim client per-request lewat header `x-s3-endpoint`, `x-s3-region`, `x-s3-access-key`, `x-s3-secret-key`, `x-s3-force-path-style`. Profil disimpan di `localStorage` browser.
+- **Profil S3**: tersimpan di Supabase pada tabel `s3_profiles`, dilindungi RLS (`auth.uid()`). Diakses lewat `/api/s3/profiles` (CRUD + set aktiv) memakai sesi cookie yang sama — sekali jalan, sinkron antar perangkat.
+- **Kredensial S3**: dikirim client per-request lewat header `x-s3-endpoint`, `x-s3-region`, `x-s3-access-key`, `x-s3-secret-key`, `x-s3-force-path-style`; tidak pernah disimpan di server di luar tabel profil user.
 - **S3 client**: `@aws-sdk/client-s3` dibuat per-request (`src/lib/s3.ts`). `path-style` aktif secara default — cocok untuk sebagian besar custom endpoint.
 
 ## Persyaratan
@@ -54,6 +55,8 @@ Web app untuk mengelola storage S3-compatible (AWS S3, MinIO, Cloudflare R2, Bac
    ```
 
 > Catatan Supabase: aktifkan **Email provider** di Dashboard → Authentication → Sign In / Up agar user baru bisa registrasi. Autentikasi lain (Magic Link, OAuth) bisa ditambahkan di `src/pages/api/auth/login.ts`.
+>
+> Jalankan migration `supabase/migrations/0001_s3_profiles.sql` di Dashboard → SQL Editor (membuat tabel `s3_profiles` + RLS) — dipakai untuk menyimpan profil S3.
 
 ## API
 
@@ -65,6 +68,11 @@ Semua endpoint `/api/s3/*` butuh sesi login. Kredensial S3 dikirim via header pe
 | POST   | `/api/auth/logout`            | Hapus cookie sesi                               |
 | GET    | `/api/auth/session`           | Status sesi (`{ user }`)                        |
 | GET    | `/api/s3/buckets`             | Daftar bucket                                   |
+| GET    | `/api/s3/profiles`            | Daftar profil S3 + profil aktif (RLS per user)  |
+| POST   | `/api/s3/profiles`            | Buat profil S3                                  |
+| PATCH  | `/api/s3/profiles`            | Ubah profil S3                                  |
+| DELETE | `/api/s3/profiles?id=`        | Hapus profil S3                                 |
+| POST   | `/api/s3/profiles/activate`   | Set profil aktif (`{ id }`)                     |
 | GET    | `/api/s3/objects?bucket=&prefix=` | Daftar isi folder (objek + subfolder)       |
 | GET    | `/api/s3/download?bucket=&key=&preview=` | Download / preview streaming file    |
 | POST   | `/api/s3/upload`              | Upload file (multipart: `bucket`, `key`, `file`) |
@@ -76,7 +84,7 @@ Semua endpoint `/api/s3/*` butuh sesi login. Kredensial S3 dikirim via header pe
 
 - Upload memakai PutObject (maks ±5 GB, file diproses in-memory).
 - List folder satu halaman (MaxKeys 1000), tanpa pagination lanjutan.
-- Kredensial S3 disimpan di localStorage — jangan pakai akun dengan akses berlebihan untuk penggunaan publik.
+- Secret key S3 tersimpan plaintext di `s3_profiles` (dilindungi RLS). Untuk produksi, pertimbangkan enkripsi client-side (AES-GCM) atau Supabase Vault.
 
 ## Struktur
 
@@ -91,7 +99,7 @@ src/
   middleware.ts    # guard /app & /api/s3/*
   pages/
     api/auth/      # login, logout, session
-    api/s3/        # buckets, objects, download, upload, delete, copy, mkdir
+    api/s3/        # buckets, objects, download, upload, delete, copy, mkdir, profiles, profiles/activate
     login.astro    # halaman login
     app.astro      # halaman utama
     index.astro    # redirect ke /app
