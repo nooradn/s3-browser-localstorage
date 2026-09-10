@@ -18,6 +18,7 @@ export function newProfileId(): string {
 
 export function loadProfiles(): S3Profile[] {
   try {
+    if (typeof localStorage === 'undefined') return []
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
     if (!Array.isArray(raw)) return []
     return raw.filter(
@@ -35,14 +36,17 @@ export function loadProfiles(): S3Profile[] {
 }
 
 export function saveProfiles(list: S3Profile[]): void {
+  if (typeof localStorage === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
 }
 
 export function getActiveProfileId(): string | null {
+  if (typeof localStorage === 'undefined') return null
   return localStorage.getItem(ACTIVE_KEY)
 }
 
 export function setActiveProfileId(id: string | null): void {
+  if (typeof localStorage === 'undefined') return
   if (id) localStorage.setItem(ACTIVE_KEY, id)
   else localStorage.removeItem(ACTIVE_KEY)
 }
