@@ -22,13 +22,13 @@ import {
   type S3Profile,
 } from '../../lib/client/profiles'
 import { errMessage, joinKey, parentKey } from '../../lib/client/format'
-import { Toolbar } from './Toolbar'
+import { Toolbar, type ViewMode } from './Toolbar'
 import { FileTable, type RowAction } from './FileTable'
 import { ProfileModal } from './ProfileModal'
 import { PromptModal } from './PromptModal'
 import { ConfirmModal } from './ConfirmModal'
 import { CopyMoveModal } from './CopyMoveModal'
-import { CloudIcon, LogoutIcon, ServerIcon } from './Icons'
+import { CloudIcon, FolderIcon, LogoutIcon, ServerIcon } from './Icons'
 import ThemeToggle from '../ThemeToggle'
 
 type Toast = { id: number; message: string; kind: 'success' | 'error' | 'info' }
@@ -54,6 +54,8 @@ type CopyMoveState = {
   mode: 'copy' | 'move'
 }
 
+type NavLocation = { bucket: string | null; prefix: string }
+
 type Props = {
   user?: { id: string; email: string | null } | null
 }
@@ -74,6 +76,10 @@ export default function FileBrowser({ user }: Props) {
   const [busy, setBusy] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+
+  const [view, setView] = useState<ViewMode>('grid')
+  const [selected, setSelected] = useState<string | null>(null)
+  const [nav, setNav] = useState<{ stack: NavLocation[]; idx: number }>({ stack: [], idx: -1 })
 
   const [toasts, setToasts] = useState<Toast[]>([])
   const [profileModalOpen, setProfileModalOpen] = useState(false)
@@ -106,6 +112,23 @@ export default function FileBrowser({ user }: Props) {
   const bump = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   useEffect(() => {
+    try {
+      const v = localStorage.getItem('s3browser.view')
+      if (v === 'grid' || v === 'list') setView(v)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('s3browser.view', view)
+    } catch {
+      // ignore
+    }
+  }, [view])
+
+  useEffect(() => {
     let cancelled = false
     fetchProfilesApi()
       .then(({ profiles: list, activeId: id }) => {
@@ -130,6 +153,8 @@ export default function FileBrowser({ user }: Props) {
     setPrefix('')
     setItems([])
     setLoaded(false)
+    setNav({ stack: [], idx: -1 })
+    setSelected(null)
     if (!active) return
     let cancelled = false
     listBuckets(active)
@@ -173,6 +198,35 @@ export default function FileBrowser({ user }: Props) {
       cancelled = true
     }
   }, [active, bucket, prefix, refreshKey, handleErr])
+
+  function navigate(loc: NavLocation) {
+    setBucket(loc.bucket)
+    setPrefix(loc.prefix)
+    setSelected(null)
+    setNav((prev) => {
+      const stack = prev.stack.slice(0, prev.idx + 1)
+      stack.push(loc)
+      return { stack, idx: stack.length - 1 }
+    })
+  }
+
+  function goBack() {
+    if (nav.idx <= 0) return
+    const loc = nav.stack[nav.idx - 1]
+    setBucket(loc.bucket)
+    setPrefix(loc.prefix)
+    setSelected(null)
+    setNav((prev) => ({ ...prev, idx: prev.idx - 1 }))
+  }
+
+  function goForward() {
+    if (nav.idx >= nav.stack.length - 1) return
+    const loc = nav.stack[nav.idx + 1]
+    setBucket(loc.bucket)
+    setPrefix(loc.prefix)
+    setSelected(null)
+    setNav((prev) => ({ ...prev, idx: prev.idx + 1 }))
+  }
 
   async function selectProfile(id: string) {
     if (!id) return
@@ -386,6 +440,8 @@ export default function FileBrowser({ user }: Props) {
     }))
   }, [prefix])
 
+  const selectedName = useMemo(() => items.find((i) => i.key === selected)?.name ?? null, [items, selected])
+
   async function logout() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
     window.location.href = '/login'
@@ -398,138 +454,180 @@ export default function FileBrowser({ user }: Props) {
   }
 
   return (
-    <div class="s3-app">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-icon">
-            <CloudIcon size={22} />
-          </span>
-          <span class="brand-name">S3 Browser</span>
+    <div class="s3-app finder">
+      <header class="titlebar">
+        <div class="traffic" aria-hidden="true">
+          <span class="tl red" />
+          <span class="tl yellow" />
+          <span class="tl green" />
         </div>
-        <div class="topbar-profile">
-          <select
-            class="input select-inline"
-            value={active?.id ?? ''}
-            onChange={(e) => selectProfile(e.currentTarget.value)}
-          >
-            {!profiles.length ? <option value="">{loadingProfiles ? 'Memuat profil...' : '— tambah profil S3 —'}</option> : null}
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <button type="button" class="btn icon-btn" title="Kelola profil S3" onClick={() => setProfileModalOpen(true)}>
-            <ServerIcon />
-          </button>
+        <div class="titlebar-title" title={active ? `${active.name} · ${active.endpoint}` : 'S3 Browser'}>
+          {active ? active.name : 'S3 Browser'}
         </div>
-        <div class="topbar-right">
+        <div class="titlebar-right">
           <ThemeToggle />
           <span class="user-chip" title={user?.email ?? ''}>
             {user?.email ?? ''}
           </span>
-          <button type="button" class="btn btn-ghost icon-btn" title="Keluar" onClick={logout}>
-            <LogoutIcon />
+          <button type="button" class="tool-btn" title="Keluar" onClick={logout}>
+            <LogoutIcon size={16} />
           </button>
         </div>
       </header>
 
-      <main
-        class="browser"
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragOver(true)
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault()
-          if (e.currentTarget === e.target) setDragOver(false)
-        }}
-        onDrop={onDrop}
-      >
-        <Toolbar
-          disabled={!active || !bucket}
-          busy={busy}
-          query={query}
-          onQuery={setQuery}
-          onUpload={(files) => void onUpload(files)}
-          onNewFolder={() =>
-            setPrompt({
-              title: 'Buat folder baru',
-              label: 'Nama folder',
-              initial: '',
-              confirmLabel: 'Buat',
-              onSubmit: async (value) => {
-                if (!active || !bucket) return
-                if (!/^[^/\\]+$/.test(value)) throw new Error('Nama folder tidak boleh mengandung "/"')
-                await makeFolderApi(active, bucket, joinKey(prefix, value))
-                pushToast(`Folder "${value}" dibuat`, 'success')
-                bump()
-              },
-            })
-          }
-          onRefresh={bump}
-        />
-
-        {dragOver ? <div class="drop-hint">Lepaskan file untuk upload</div> : null}
-
-        <div class="bucketbar">
-          <select
-            class="input select-inline bucket-select"
-            value={bucket ?? ''}
-            disabled={!buckets.length}
-            onChange={(e) => {
-              setBucket(e.currentTarget.value || null)
-              setPrefix('')
-            }}
-          >
-            {!buckets.length ? <option value="">— pilih bucket —</option> : null}
-            {buckets.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-          <nav class="crumbs" aria-label="Breadcrumb">
-            <button type="button" class="crumb-link root" onClick={() => setPrefix('')}>
-              s3://{bucket ?? '…'}
-            </button>
-            {crumbs.map((c) => (
-              <span class="crumb" key={c.key}>
-                <span class="crumb-sep">/</span>
-                <button type="button" class="crumb-link" onClick={() => setPrefix(c.key)}>
-                  {c.name}
-                </button>
-              </span>
-            ))}
-          </nav>
-        </div>
-
-        <FileTable
-          items={filtered}
-          loading={loading}
-          empty={!loaded || (!loading && !filtered.length)}
-          hasProfile={!!active}
-          hasBucket={!!bucket}
-          onOpenFolder={setPrefix}
-          onAction={onRowAction}
-          onAddProfile={() => setProfileModalOpen(true)}
-        />
-
-        <footer class="statusbar">
-          <span>{loading ? 'Memuat...' : `${filtered.length} item`}</span>
-          <span class="statusbar-right">
-            {active ? (
-              <>
-                <span class="status-dot" title="profil aktif" />
-                {active.endpoint}
-                {active.region && active.region !== 'auto' ? ` · ${active.region}` : ''}
-              </>
+      <div class="finder-body">
+        <aside class="sidebar">
+          <div class="side-section">
+            <div class="side-head">Favorit</div>
+            {profiles.length === 0 ? (
+              <p class="side-empty">{loadingProfiles ? 'Memuat...' : 'Belum ada profil'}</p>
             ) : (
-              'Belum ada profil aktif'
+              <ul class="side-list">
+                {profiles.map((p) => (
+                  <li
+                    key={p.id}
+                    class={`side-item${p.id === activeId ? ' active' : ''}`}
+                    title={`${p.name} · ${p.endpoint}`}
+                    onClick={() => void selectProfile(p.id)}
+                  >
+                    <span class="side-ico">
+                      <CloudIcon size={15} />
+                    </span>
+                    <span class="side-text">{p.name}</span>
+                    {p.id === activeId ? <span class="side-dot" aria-label="aktif" /> : null}
+                  </li>
+                ))}
+              </ul>
             )}
-          </span>
-        </footer>
-      </main>
+          </div>
+
+          <div class="side-section">
+            <div class="side-head">Bucket</div>
+            {buckets.length === 0 ? (
+              <p class="side-empty">—</p>
+            ) : (
+              <ul class="side-list">
+                {buckets.map((b) => (
+                  <li
+                    key={b}
+                    class={`side-item${bucket === b && prefix === '' ? ' active' : ''}`}
+                    title={b}
+                    onClick={() => navigate({ bucket: b, prefix: '' })}
+                  >
+                    <span class="side-ico">
+                      <FolderIcon size={15} />
+                    </span>
+                    <span class="side-text">{b}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div class="sidebar-foot">
+            <button type="button" class="side-foot-btn" onClick={() => setProfileModalOpen(true)}>
+              <ServerIcon size={14} />
+              <span>Kelola profil</span>
+            </button>
+          </div>
+        </aside>
+
+        <main
+          class="browser"
+          onDragOver={(e) => {
+            e.preventDefault()
+            setDragOver(true)
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault()
+            if (e.currentTarget === e.target) setDragOver(false)
+          }}
+          onDrop={onDrop}
+        >
+          <Toolbar
+            disabled={!active || !bucket}
+            busy={busy}
+            query={query}
+            onQuery={setQuery}
+            onUpload={(files) => void onUpload(files)}
+            onNewFolder={() =>
+              setPrompt({
+                title: 'Buat folder baru',
+                label: 'Nama folder',
+                initial: '',
+                confirmLabel: 'Buat',
+                onSubmit: async (value) => {
+                  if (!active || !bucket) return
+                  if (!/^[^/\\]+$/.test(value)) throw new Error('Nama folder tidak boleh mengandung "/"')
+                  await makeFolderApi(active, bucket, joinKey(prefix, value))
+                  pushToast(`Folder "${value}" dibuat`, 'success')
+                  bump()
+                },
+              })
+            }
+            onRefresh={bump}
+            view={view}
+            onView={setView}
+            canBack={nav.idx > 0}
+            canForward={nav.idx < nav.stack.length - 1}
+            onBack={goBack}
+            onForward={goForward}
+          />
+
+          {dragOver ? <div class="drop-hint">Lepaskan file untuk upload</div> : null}
+
+          <div class="bucketbar">
+            <nav class="crumbs" aria-label="Breadcrumb">
+              <button
+                type="button"
+                class="crumb-link root"
+                onClick={() => bucket && navigate({ bucket, prefix: '' })}
+              >
+                s3://{bucket ?? '…'}
+              </button>
+              {crumbs.map((c) => (
+                <span class="crumb" key={c.key}>
+                  <span class="crumb-sep">/</span>
+                  <button type="button" class="crumb-link" onClick={() => navigate({ bucket, prefix: c.key })}>
+                    {c.name}
+                  </button>
+                </span>
+              ))}
+            </nav>
+          </div>
+
+          <FileTable
+            items={filtered}
+            loading={loading}
+            empty={!loaded || (!loading && !filtered.length)}
+            hasProfile={!!active}
+            hasBucket={!!bucket}
+            view={view}
+            selected={selected}
+            onSelect={setSelected}
+            onOpenFolder={(key) => navigate({ bucket, prefix: key })}
+            onAction={onRowAction}
+            onAddProfile={() => setProfileModalOpen(true)}
+          />
+
+          <footer class="statusbar">
+            <span>
+              {loading ? 'Memuat...' : `${filtered.length} item${selectedName ? ` · ${selectedName} dipilih` : ''}`}
+            </span>
+            <span class="statusbar-right">
+              {active ? (
+                <>
+                  <span class="status-dot" title="profil aktif" />
+                  {active.endpoint}
+                  {active.region && active.region !== 'auto' ? ` · ${active.region}` : ''}
+                </>
+              ) : (
+                'Belum ada profil aktif'
+              )}
+            </span>
+          </footer>
+        </main>
+      </div>
 
       {profileModalOpen ? (
         <ProfileModal

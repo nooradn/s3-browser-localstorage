@@ -1068,3 +1068,434 @@ select.input {
     border-bottom: 1px solid var(--line);
   }
 }
+
+/* ---------- Apple Finder ---------- */
+
+.finder {
+  --f-titlebar: #26262b;
+  --f-titlebar-line: rgba(255, 255, 255, 0.1);
+  --f-sidebar: #232327;
+  --f-sidebar-active: rgba(255, 255, 255, 0.08);
+  --f-sidebar-line: rgba(255, 255, 255, 0.08);
+  --f-pane: #1b1b1f;
+  --f-line: rgba(255, 255, 255, 0.1);
+  --f-sel: rgba(10, 132, 255, 0.28);
+  --f-sel-pill: #0a84ff;
+  --f-sel-text: #4aa8ff;
+  --f-toolbar: rgba(38, 38, 43, 0.55);
+  --f-text: #f5f5f7;
+  --f-muted: #9a9aa0;
+  --f-folder: #5aa6f7;
+  --f-image: #0a84ff;
+  --f-file: #7a7a80;
+  --f-tool-hover: rgba(255, 255, 255, 0.09);
+  --f-seg-active: #3c3c41;
+  --f-seg-text: #f5f5f7;
+  --f-red: #ff5f57;
+  --f-yellow: #febc2e;
+  --f-green: #28c840;
+}
+
+html[data-theme='light'] .finder {
+  --f-titlebar: #e7e7ec;
+  --f-titlebar-line: rgba(0, 0, 0, 0.12);
+  --f-sidebar: rgba(236, 236, 241, 0.94);
+  --f-sidebar-active: rgba(0, 0, 0, 0.07);
+  --f-sidebar-line: rgba(0, 0, 0, 0.09);
+  --f-pane: #ffffff;
+  --f-line: rgba(0, 0, 0, 0.1);
+  --f-sel: rgba(10, 132, 255, 0.14);
+  --f-sel-pill: #0a84ff;
+  --f-sel-text: #0a5ee0;
+  --f-toolbar: rgba(247, 247, 249, 0.55);
+  --f-text: #1d1d1f;
+  --f-muted: #6e6e73;
+  --f-folder: #4a90d9;
+  --f-image: #0a84ff;
+  --f-file: #9a9aa0;
+  --f-tool-hover: rgba(0, 0, 0, 0.07);
+  --f-seg-active: #ffffff;
+  --f-seg-text: #1d1d1f;
+  --f-red: #ff5f57;
+  --f-yellow: #febc2e;
+  --f-green: #28c840;
+}
+
+.finder .s3-app {
+  background: var(--f-pane);
+}
+
+.titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 46px;
+  flex: none;
+  padding: 0 12px;
+  gap: 12px;
+  background: var(--f-titlebar);
+  border-bottom: 1px solid var(--f-titlebar-line);
+  z-index: 5;
+}
+.traffic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 70px;
+  flex: none;
+}
+.tl {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.tl.red {
+  background: var(--f-red);
+}
+.tl.yellow {
+  background: var(--f-yellow);
+}
+.tl.green {
+  background: var(--f-green);
+}
+.titlebar-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--f-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.titlebar-right {
+  margin-left: auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.finder .user-chip {
+  font-size: 12px;
+  color: var(--f-muted);
+  background: transparent;
+  border: 0;
+  padding: 3px 6px;
+  max-width: 200px;
+}
+
+.finder-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 214px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--f-sidebar);
+  border-right: 1px solid var(--f-sidebar-line);
+  padding: 12px 10px;
+  overflow-y: auto;
+}
+.side-section {
+  margin-bottom: 18px;
+}
+.side-head {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--f-muted);
+  padding: 0 10px 4px;
+}
+.side-empty {
+  margin: 0;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--f-muted);
+}
+.side-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--f-text);
+}
+.side-item:hover {
+  background: var(--f-sidebar-active);
+}
+.side-item.active {
+  background: var(--f-sel);
+  color: var(--f-sel-text);
+}
+.side-ico {
+  display: inline-flex;
+  color: var(--f-muted);
+}
+.side-item.active .side-ico,
+.side-item:hover .side-ico {
+  color: var(--f-sel-text);
+}
+.side-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.side-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--f-green);
+}
+.sidebar-foot {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--f-sidebar-line);
+}
+.side-foot-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--f-muted);
+}
+.side-foot-btn:hover {
+  background: var(--f-sidebar-active);
+  color: var(--f-text);
+}
+
+.finder .browser {
+  background: var(--f-pane);
+}
+
+.finder .toolbar {
+  padding: 8px 12px;
+  gap: 10px;
+  background: var(--f-toolbar);
+  border-bottom: 1px solid var(--f-line);
+}
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--f-muted);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+.tool-btn:hover:not(:disabled) {
+  background: var(--f-tool-hover);
+  color: var(--f-text);
+}
+.tool-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.tool-sep {
+  width: 1px;
+  height: 18px;
+  flex: none;
+  background: var(--f-line);
+}
+.seg-view {
+  display: inline-flex;
+  gap: 1px;
+  padding: 1px;
+  border: 1px solid var(--f-line);
+  border-radius: 7px;
+  background: var(--f-tool-hover);
+}
+.seg-view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--f-muted);
+}
+.seg-view-btn.active {
+  background: var(--f-seg-active);
+  color: var(--f-seg-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.finder .busy-chip {
+  font-size: 12px;
+  color: var(--f-sel-text);
+  background: var(--f-sel);
+  border: 0;
+}
+
+.finder .search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.finder .search > svg {
+  position: absolute;
+  left: 9px;
+  color: var(--f-muted);
+  pointer-events: none;
+}
+.finder .search .input {
+  width: 200px;
+  height: 26px;
+  padding: 0 12px 0 30px;
+  border-radius: 7px;
+  border: 1px solid var(--f-line);
+  background: var(--f-pane);
+  color: var(--f-text);
+  font-size: 13px;
+}
+.finder .search .input::placeholder {
+  color: var(--f-muted);
+}
+.finder .search .input:focus {
+  border-color: var(--f-sel-text);
+  box-shadow: none;
+}
+
+.finder .bucketbar {
+  padding: 9px 14px 10px;
+}
+.finder .crumbs {
+  font-family: var(--font);
+  font-size: 12.5px;
+}
+.finder .crumb-link {
+  color: var(--f-text);
+  font-weight: 600;
+}
+.finder .crumb-link:hover {
+  background: transparent;
+  color: var(--f-sel-text);
+}
+.finder .crumb-sep {
+  color: var(--f-muted);
+}
+
+.finder .table-wrap {
+  padding: 0;
+}
+.finder .finder-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.finder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px 8px;
+  padding: 14px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 6px 7px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+.tile:hover {
+  background: var(--f-sel);
+}
+.tile-icon {
+  display: inline-flex;
+}
+.tile-folder {
+  color: var(--f-folder);
+}
+.tile-image {
+  color: var(--f-image);
+}
+.tile-file {
+  color: var(--f-file);
+}
+.tile-name {
+  font-size: 12px;
+  color: var(--f-text);
+  text-align: center;
+  max-width: 100%;
+  padding: 2px 7px;
+  border-radius: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile.selected .tile-name {
+  background: var(--f-sel-pill);
+  color: #fff;
+}
+.grid-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 40vh;
+  color: var(--f-muted);
+}
+
+.finder-table th {
+  background: var(--f-pane);
+  color: var(--f-muted);
+  border-bottom: 1px solid var(--f-line);
+}
+.finder-table td {
+  border-bottom: 1px solid var(--f-line);
+  color: var(--f-text);
+}
+.finder-table .cell-size,
+.finder-table .cell-date {
+  color: var(--f-muted);
+}
+.finder-table tbody tr {
+  cursor: default;
+}
+.finder-table tbody tr:hover {
+  background: var(--f-sel);
+}
+.finder-table tbody tr.row-selected,
+.finder-table tbody tr.row-selected:hover {
+  background: var(--f-sel);
+}
+
+.finder .statusbar {
+  background: var(--f-toolbar);
+  border-top: 1px solid var(--f-line);
+  color: var(--f-muted);
+  font-size: 12px;
+  padding: 6px 14px;
+}
