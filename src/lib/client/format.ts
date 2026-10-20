@@ -14,7 +14,7 @@ export function formatDate(value: string | null | undefined): string {
   return `${d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}, ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
 }
 
-const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'svg', 'bmp', 'ico']
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'bmp', 'ico']
 
 export function isImageName(name: string): boolean {
   const ext = name.toLowerCase().split('.').pop() ?? ''

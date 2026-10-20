@@ -13,6 +13,7 @@ Web app untuk mengelola storage S3-compatible (AWS S3, MinIO, Cloudflare R2, Bac
 ## Cara kerja
 
 - **Kredensial S3**: Disimpan di browser (`localStorage` / `sessionStorage`). Dikirim ke server per-request lewat header `x-s3-endpoint`, `x-s3-region`, `x-s3-access-key`, `x-s3-secret-key`, `x-s3-force-path-style`. Kredensial tidak pernah disimpan di server.
+- **Keamanan endpoint**: Endpoint S3 harus menggunakan HTTPS. Pastikan endpoint tepercaya, khususnya saat aplikasi di-host untuk publik.
 - **S3 client**: `@aws-sdk/client-s3` dibuat per-request (`src/lib/s3.ts`). `path-style` aktif secara default — cocok untuk sebagian besar custom endpoint.
 
 ## Persyaratan
@@ -62,6 +63,7 @@ Kredensial S3 dikirim via header per request (`x-s3-*`).
 - Upload memakai PutObject (maks ±5 GB, file diproses in-memory).
 - List folder satu halaman (MaxKeys 1000), tanpa pagination lanjutan.
 - Kredensial S3 tersimpan di penyimpanan lokal browser.
+- Endpoint S3 menggunakan HTTPS. Preview hanya tersedia untuk gambar raster yang aman; SVG dan tipe konten aktif lainnya hanya dapat diunduh.
 
 ## Struktur
 

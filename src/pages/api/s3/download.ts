@@ -14,12 +14,29 @@ export const GET: APIRoute = wrap(async (request) => {
 
   const client = clientFromRequest(request)
   const obj = await getObjectStream(client, bucket, key)
+  const contentType = guessContentType(obj.contentType, key)
+  const safePreviewTypes = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/avif',
+    'image/bmp',
+    'image/x-icon',
+  ])
+  if (preview && !safePreviewTypes.has(contentType.split(';', 1)[0].trim().toLowerCase())) {
+    await obj.body.cancel()
+    throw new HttpError(415, 'Preview hanya tersedia untuk gambar raster yang aman')
+  }
 
   const name = key.split('/').pop() || 'download'
   const ascii = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
 
-  const headers = new Headers({ 'Cache-Control': 'no-store' })
-  headers.set('Content-Type', guessContentType(obj.contentType, key))
+  const headers = new Headers({
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  })
+  headers.set('Content-Type', contentType)
   if (obj.contentLength != null) headers.set('Content-Length', String(obj.contentLength))
   const disposition = preview ? 'inline' : 'attachment'
   headers.set('Content-Disposition', `${disposition}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`)

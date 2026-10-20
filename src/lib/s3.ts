@@ -9,6 +9,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3'
 import { Readable } from 'node:stream'
+import { normalizeS3Endpoint } from './s3-endpoint'
 
 export type S3Creds = {
   endpoint: string
@@ -37,16 +38,9 @@ export type UploadSource = {
   type: string
 }
 
-export function normalizeEndpoint(endpoint: string): string {
-  let e = endpoint.trim()
-  if (!e) return e
-  if (!/^[a-z]+:\/\//i.test(e)) e = `https://${e}`
-  return e.replace(/\/+$/, '')
-}
-
 export function makeClient(c: S3Creds): S3Client {
   return new S3Client({
-    endpoint: normalizeEndpoint(c.endpoint),
+    endpoint: normalizeS3Endpoint(c.endpoint),
     region: c.region?.trim() || 'auto',
     forcePathStyle: Boolean(c.forcePathStyle),
     requestChecksumCalculation: 'WHEN_REQUIRED',

@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { S3Profile } from '../../lib/client/profiles'
+import { normalizeS3Endpoint } from '../../lib/s3-endpoint'
 import { Modal } from './Modal'
 import { PencilIcon, PlusIcon, ServerIcon, TrashIcon } from './Icons'
 
@@ -27,12 +28,6 @@ function emptyDraft(): Draft {
 
 function draftFromProfile(p: S3Profile): Draft {
   return { ...p }
-}
-
-function cleanEndpoint(value: string): string {
-  let e = value.trim().replace(/\/+$/, '')
-  if (e && !/^[a-z]+:\/\//i.test(e)) e = `https://${e}`
-  return e
 }
 
 type Props = {
@@ -66,11 +61,16 @@ export function ProfileModal({ profiles, activeId, onSave, onDelete, onClose }: 
 
   function submit() {
     const name = draft.name.trim()
-    const endpoint = cleanEndpoint(draft.endpoint)
     const accessKeyId = draft.accessKeyId.trim()
     const secretAccessKey = draft.secretAccessKey.trim()
 
     if (!name) return setError('Nama profil wajib diisi')
+    let endpoint: string
+    try {
+      endpoint = normalizeS3Endpoint(draft.endpoint)
+    } catch (e) {
+      return setError(e instanceof Error ? e.message : String(e))
+    }
     if (!endpoint) return setError('Endpoint S3 wajib diisi')
     if (!accessKeyId) return setError('Access Key wajib diisi')
     if (!secretAccessKey) return setError('Secret Key wajib diisi')
@@ -173,7 +173,7 @@ export function ProfileModal({ profiles, activeId, onSave, onDelete, onClose }: 
           <div class="field">
             <span class="label">Endpoint S3</span>
             <input class="input" placeholder="mis. s3.amazonaws.com / minio.example.com:9000" value={draft.endpoint} onInput={(e) => set('endpoint', e.currentTarget.value)} />
-            <span class="hint">Tanpa awalan https:// boleh, nanti otomatis ditambahkan.</span>
+            <span class="hint">HTTPS wajib; tanpa awalan https:// akan ditambahkan otomatis.</span>
           </div>
           <div class="field">
             <span class="label">Region</span>
