@@ -1,10 +1,10 @@
 # S3 Browser
 
-Web app untuk mengelola storage S3-compatible (AWS S3, MinIO, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, dsb.) lewat custom endpoint. Dibangun dengan Astro (SSR) + Preact, autentikasi memakai Supabase.
+Web app untuk mengelola storage S3-compatible (AWS S3, MinIO, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, dsb.) lewat custom endpoint. Dibangun dengan Astro (SSR) + Preact, profil koneksi disimpan secara lokal di browser (`localStorage` / `sessionStorage`).
 
 ## Fitur
 
-- Login/registrasi via Supabase Auth (email + password)
+- Bebas autentikasi server/cloud — profil tersimpan di browser secara lokal
 - Multi-profil koneksi S3 — simpan beberapa endpoint & kredensial, ganti cepat
 - List bucket & jelajahi folder/objek (pagination berbasis `Delimiter: '/'`)
 - Upload file, download/preview, rename, copy, move, hapus (file & folder rekursif), buat folder
@@ -12,16 +12,13 @@ Web app untuk mengelola storage S3-compatible (AWS S3, MinIO, Cloudflare R2, Bac
 
 ## Cara kerja
 
-- **Auth**: login diproses server-side (`POST /api/auth/login`) memakai `@supabase/supabase-js`. Sesi disimpan di `httpOnly` cookie (`sb_access_token`, `sb_refresh_token`). Middleware melindungi `/app` dan seluruh `/api/s3/*`.
-- **Profil S3**: tersimpan di Supabase pada tabel `s3_profiles`, dilindungi RLS (`auth.uid()`). Diakses lewat `/api/s3/profiles` (CRUD + set aktiv) memakai sesi cookie yang sama — sekali jalan, sinkron antar perangkat.
-- **Kredensial S3**: dikirim client per-request lewat header `x-s3-endpoint`, `x-s3-region`, `x-s3-access-key`, `x-s3-secret-key`, `x-s3-force-path-style`; tidak pernah disimpan di server di luar tabel profil user.
+- **Kredensial S3**: Disimpan di browser (`localStorage` / `sessionStorage`). Dikirim ke server per-request lewat header `x-s3-endpoint`, `x-s3-region`, `x-s3-access-key`, `x-s3-secret-key`, `x-s3-force-path-style`. Kredensial tidak pernah disimpan di server.
 - **S3 client**: `@aws-sdk/client-s3` dibuat per-request (`src/lib/s3.ts`). `path-style` aktif secara default — cocok untuk sebagian besar custom endpoint.
 
 ## Persyaratan
 
 - Node.js ≥ 20 (dikembangkan di Node 24)
 - pnpm (atau npm/yarn)
-- Proyek Supabase: https://supabase.com
 
 ## Setup
 
@@ -31,60 +28,40 @@ Web app untuk mengelola storage S3-compatible (AWS S3, MinIO, Cloudflare R2, Bac
    pnpm install
    ```
 
-2. Duplikasi `.env.example` menjadi `.env` dan isi:
-
-   ```env
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_ANON_KEY=sb_publishable_xxxx
-   ```
-
-3. (Opsional) Pasang adapter Node untuk mode production:
+2. (Opsional) Duplikasi `.env.example` menjadi `.env`:
 
    ```bash
-   pnpm approve-builds esbuild
+   cp .env.example .env
    ```
 
-4. Jalankan:
+3. Jalankan:
 
    ```bash
    pnpm dev        # develop (http://localhost:4321)
    pnpm build      # build production
    pnpm preview    # preview hasil build
-   pnpm start      # jalankan standalone (node ./dist/server/entry.mjs)
    pnpm check      # type-check (astro check)
    ```
 
-> Catatan Supabase: aktifkan **Email provider** di Dashboard → Authentication → Sign In / Up agar user baru bisa registrasi. Autentikasi lain (Magic Link, OAuth) bisa ditambahkan di `src/pages/api/auth/login.ts`.
->
-> Jalankan migration `supabase/migrations/0001_s3_profiles.sql` di Dashboard → SQL Editor (membuat tabel `s3_profiles` + RLS) — dipakai untuk menyimpan profil S3.
-
 ## API
 
-Semua endpoint `/api/s3/*` butuh sesi login. Kredensial S3 dikirim via header per request (`x-s3-*`).
+Kredensial S3 dikirim via header per request (`x-s3-*`).
 
-| Method | Path                          | Fungsi                                          |
-| ------ | ----------------------------- | ----------------------------------------------- |
-| POST   | `/api/auth/login`             | Login, set cookie sesi                          |
-| POST   | `/api/auth/logout`            | Hapus cookie sesi                               |
-| GET    | `/api/auth/session`           | Status sesi (`{ user }`)                        |
-| GET    | `/api/s3/buckets`             | Daftar bucket                                   |
-| GET    | `/api/s3/profiles`            | Daftar profil S3 + profil aktif (RLS per user)  |
-| POST   | `/api/s3/profiles`            | Buat profil S3                                  |
-| PATCH  | `/api/s3/profiles`            | Ubah profil S3                                  |
-| DELETE | `/api/s3/profiles?id=`        | Hapus profil S3                                 |
-| POST   | `/api/s3/profiles/activate`   | Set profil aktif (`{ id }`)                     |
-| GET    | `/api/s3/objects?bucket=&prefix=` | Daftar isi folder (objek + subfolder)       |
-| GET    | `/api/s3/download?bucket=&key=&preview=` | Download / preview streaming file    |
-| POST   | `/api/s3/upload`              | Upload file (multipart: `bucket`, `key`, `file`) |
-| POST   | `/api/s3/delete`              | Hapus file / folder (rekursif)                 |
-| POST   | `/api/s3/copy`                | Copy / rename / move (file & folder)           |
-| POST   | `/api/s3/mkdir`               | Buat folder placeholder (`key/`)               |
+| Method | Path                                     | Fungsi                                           |
+| ------ | ---------------------------------------- | ------------------------------------------------ |
+| GET    | `/api/s3/buckets`                        | Daftar bucket                                    |
+| GET    | `/api/s3/objects?bucket=&prefix=`        | Daftar isi folder (objek + subfolder)            |
+| GET    | `/api/s3/download?bucket=&key=&preview=` | Download / preview streaming file                |
+| POST   | `/api/s3/upload`                         | Upload file (multipart: `bucket`, `key`, `file`) |
+| POST   | `/api/s3/delete`                         | Hapus file / folder (rekursif)                   |
+| POST   | `/api/s3/copy`                           | Copy / rename / move (file & folder)             |
+| POST   | `/api/s3/mkdir`                          | Buat folder placeholder (`key/`)                 |
 
 ## Batasan
 
 - Upload memakai PutObject (maks ±5 GB, file diproses in-memory).
 - List folder satu halaman (MaxKeys 1000), tanpa pagination lanjutan.
-- Secret key S3 tersimpan plaintext di `s3_profiles` (dilindungi RLS). Untuk produksi, pertimbangkan enkripsi client-side (AES-GCM) atau Supabase Vault.
+- Kredensial S3 tersimpan di penyimpanan lokal browser.
 
 ## Struktur
 
@@ -93,19 +70,11 @@ src/
   lib/
     s3.ts          # klien & operasi S3
     s3req.ts       # ekstraksi kredensial dari header, wrapper error
-    supabase.ts    # sesi Supabase + cookie
     http.ts        # HttpError, json helpers
     client/        # api.ts, profiles.ts, format.ts (frontend)
-  middleware.ts    # guard /app & /api/s3/*
+  middleware.ts    # router middleware
   pages/
-    api/auth/      # login, logout, session
-    api/s3/        # buckets, objects, download, upload, delete, copy, mkdir, profiles, profiles/activate
-    login.astro    # halaman login
+    api/s3/        # buckets, objects, download, upload, delete, copy, mkdir
     app.astro      # halaman utama
     index.astro    # redirect ke /app
-  components/
-    auth/Login.tsx
-    s3/FileBrowser.tsx, FileTable.tsx, Toolbar.tsx, ProfileModal.tsx,
-       CopyMoveModal.tsx, Modal.tsx, PromptModal.tsx, ConfirmModal.tsx, Icons.tsx
-  styles/global.css
 ```

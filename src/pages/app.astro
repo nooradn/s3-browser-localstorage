@@ -1,10 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro'
 import FileBrowser from '../components/s3/FileBrowser'
-
-const user = Astro.locals.user
 ---
 
 <Layout title="S3 Browser">
-  <FileBrowser client:load user={user} />
+  <FileBrowser client:load />
 </Layout>

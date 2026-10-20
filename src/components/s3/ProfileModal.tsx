@@ -190,7 +190,7 @@ export function ProfileModal({ profiles, activeId, onSave, onDelete, onClose }: 
           <div class="field">
             <span class="label">Secret Access Key</span>
             <input class="input" type="password" placeholder="••••••••" value={draft.secretAccessKey} onInput={(e) => set('secretAccessKey', e.currentTarget.value)} />
-            <span class="hint">Kredensial tersimpan aman di Supabase (RLS per user) dan hanya dikirim ke server saat request S3.</span>
+            <span class="hint">Kredensial tersimpan di penyimpanan lokal browser (localStorage/sessionStorage) dan hanya dikirim ke server saat request S3.</span>
           </div>
           {error ? <p class="field-error">{error}</p> : null}
         </div>

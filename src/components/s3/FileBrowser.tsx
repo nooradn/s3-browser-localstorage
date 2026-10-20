@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks'
 import type { JSX } from 'preact'
-import type { ApiError, S3Item } from '../../lib/client/api'
+import type { S3Item } from '../../lib/client/api'
 import {
   copyEntry,
   deleteEntry,
@@ -14,6 +14,7 @@ import {
 } from '../../lib/client/api'
 import {
   activateProfile as activateProfileApi,
+  clearLocalStorage,
   createProfile as createProfileApi,
   fetchProfiles as fetchProfilesApi,
   removeProfile as removeProfileApi,
@@ -56,11 +57,7 @@ type CopyMoveState = {
 
 type NavLocation = { bucket: string | null; prefix: string }
 
-type Props = {
-  user?: { id: string; email: string | null } | null
-}
-
-export default function FileBrowser({ user }: Props) {
+export default function FileBrowser() {
   const [profiles, setProfiles] = useState<S3Profile[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [loadingProfiles, setLoadingProfiles] = useState(true)
@@ -96,14 +93,6 @@ export default function FileBrowser({ user }: Props) {
   const handleErr = useCallback(
     (e: unknown) => {
       const message = errMessage(e)
-      const status = (e as ApiError)?.status
-      if (status === 401) {
-        pushToast('Sesi berakhir, silakan login ulang', 'error')
-        window.setTimeout(() => {
-          window.location.href = '/login'
-        }, 1200)
-        return
-      }
       pushToast(message, 'error')
     },
     [pushToast],
@@ -442,9 +431,22 @@ export default function FileBrowser({ user }: Props) {
 
   const selectedName = useMemo(() => items.find((i) => i.key === selected)?.name ?? null, [items, selected])
 
-  async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
-    window.location.href = '/login'
+  function onClearSession() {
+    setConfirm({
+      title: 'Hapus data sesi lokal',
+      message: 'Hapus semua profil S3 yang tersimpan di browser ini?',
+      confirmLabel: 'Hapus',
+      onConfirm: () => {
+        clearLocalStorage()
+        setProfiles([])
+        setActiveId(null)
+        setBuckets([])
+        setBucket(null)
+        setPrefix('')
+        setItems([])
+        pushToast('Data lokal berhasil dibersihkan', 'info')
+      },
+    })
   }
 
   function onDrop(e: DragEvent) {
@@ -466,10 +468,15 @@ export default function FileBrowser({ user }: Props) {
         </div>
         <div class="titlebar-right">
           <ThemeToggle />
-          <span class="user-chip" title={user?.email ?? ''}>
-            {user?.email ?? ''}
+          <span class="user-chip" title="Penyimpanan lokal di browser">
+            Local Storage
           </span>
-          <button type="button" class="tool-btn" title="Keluar" onClick={logout}>
+          <button
+            type="button"
+            class="tool-btn"
+            title="Hapus sesi / penyimpanan lokal"
+            onClick={onClearSession}
+          >
             <LogoutIcon size={16} />
           </button>
         </div>
